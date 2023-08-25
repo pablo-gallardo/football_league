@@ -10,6 +10,7 @@ python = "^3.11"
 flask = "^2.3.3"
 pymongo = "^4.5.0"
 competitions-scheduler = "^0.2.5.post2"
+flask-cors = "^4.0.0"
 
 
 [build-system]
