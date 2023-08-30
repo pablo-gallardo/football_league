@@ -1,0 +1,8 @@
+.standings {
+    margin-bottom: 1em;
+}
+
+.standingsValue {
+    padding-right: 2em;
+    border:1px solid red;
+}

@@ -36,8 +36,8 @@ def update_standing(standings: list, match_updated, value: dict):
     standings[game['home']]["GF"] = standings[game['home']]["GF"] + game['scores']['home']
     standings[game['away']]["GF"] = standings[game['away']]["GF"] + game['scores']['away']
 
-    standings[game['home']]["GF"] = standings[game['home']]["GF"] - standings[game['home']]["GA"]
-    standings[game['away']]["GF"] = standings[game['away']]["GF"] - standings[game['away']]["GA"]
+    standings[game['home']]["GD"] = standings[game['home']]["GF"] - standings[game['home']]["GA"]
+    standings[game['away']]["GD"] = standings[game['away']]["GF"] - standings[game['away']]["GA"]
 
     obj_id = standings.pop('_id')
 

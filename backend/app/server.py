@@ -176,7 +176,7 @@ def get_matches(league):
 @app.route('/api/league/<league>', methods=['GET'])
 def get_league_info(league):
     """
-    Creates a new league on the database with the 'teams' collection
+    Gets a new league on the database in the 'teams' collection
     ...
 
     params
@@ -318,6 +318,35 @@ def delete_standing(league, id):
         return jsonify({'message': 'Deleted successfully'}), 200
     else:
         return jsonify({'message': 'No documents were deleted'}), 200
+
+@app.route('/api/league/all', methods=['GET'])
+def get_league_all():
+    """
+    Get all leagues
+    ...
+
+    params
+    -----
+
+        league: the name of the league
+
+    output
+    -----
+    {
+        desc: string,
+        teams: list
+    }
+    ...
+    """
+    try:
+        db_to_remove = ['admin', 'local', 'config']
+        items = client.list_database_names()
+        for db in db_to_remove:
+            items.remove(db)
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Internal Server Error'}), 500
+    return jsonify(items), 200
 
 if __name__ == '__main__':
     app.run(debug=True, port=PORT, host='localhost')
