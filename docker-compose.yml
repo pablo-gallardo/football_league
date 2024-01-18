@@ -1,0 +1,38 @@
+version: '3.1'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    domainname: "mordidos"
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: adminpassword
+
+  frontend:
+    build: 
+      context: frontend
+      dockerfile: Dockerfile
+    image: msqcr.azurecr.io/frontend
+    domainname: "mordidos"
+    container_name: frontend
+    env_file:
+      - frontend/.env
+    ports:
+      - "80:80"
+  
+  backend:
+    build: 
+      context: backend
+      dockerfile: Dockerfile
+    image: msqcr.azurecr.io/backend
+    domainname: "mordidos"
+    container_name: backend
+    environment:
+      - MONGO_SERVER=mordidos.eastus.azurecontainer.io
+      - MONGO_PORT=27017
+    ports:
+      - "5001:5001"

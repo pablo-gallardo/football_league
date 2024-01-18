@@ -1,0 +1,9 @@
+.chip {
+    gap: 6px;
+    display: "flex";
+    flex-direction: "row";
+    flex-wrap: "wrap";
+    background-color: "gray";
+    padding: 1px 3px;
+    border-radius: 4px;
+}

@@ -1,15 +1,18 @@
 import { getAllLeagues } from '../../services/MatchService';
 import { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
-import Box from '@mui/material/Box';
+// import { useNavigate } from 'react-router-dom';
+import Skeleton from '@mui/material/Skeleton';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
+import { useNavigate } from 'react-router-dom';
+
 
 export default function LeagueDropdown() {
     const [leagues, setLeagues] = useState(null)
     const [chosenLeague, setChosenLeague] = useState(null)
+    const navigate = useNavigate()
 
     useEffect(() => {
         getAllLeagues().then((data) => {
@@ -23,8 +26,8 @@ export default function LeagueDropdown() {
     }
 
     if (chosenLeague) {
-        let url = "/leagues/" + chosenLeague
-        return (<Navigate to={url} />)
+        let url = "/ui/leagues/" + chosenLeague;
+        navigate(url);
     }
 
 
@@ -36,36 +39,23 @@ export default function LeagueDropdown() {
             )
         })
         return (
-            <Box sx={{ minWidth: 120 }}>
-                <FormControl fullWidth>
-                <InputLabel id="selectLabel">Leagues</InputLabel>
-                    <Select
-                        labelId='selectLabel'
-                        value={chosenLeague}
-                        label="Leagues"
-                        onChange={handleChange}
-                    >
-                        {
-                            leagues_obj
-                        }
-                    </Select>
-                </FormControl>
-            </Box>
+            <FormControl fullWidth>
+            <InputLabel id="selectLabel">Leagues</InputLabel>
+                <Select
+                    labelId='selectLabel'
+                    value={chosenLeague}
+                    label="Leagues"
+                    onChange={handleChange}
+                >
+                    {
+                        leagues_obj
+                    }
+                </Select>
+            </FormControl>
         )
     }
 
     return (
-        <Box sx={{ minWidth: 120 }}>
-            <FormControl fullWidth>
-            <InputLabel id="selectLabel">Leagues</InputLabel>
-            <Select
-                labelId='selectLabel'
-                value="Select Option"
-                label="Leagues"
-            >
-                <MenuItem value="Select Option">Select Option</MenuItem>
-            </Select>
-            </FormControl>
-        </Box>
+        <Skeleton animation="wave" variant="rectangular" height={60} />
     )
 }

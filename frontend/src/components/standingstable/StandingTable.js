@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getStandingTable } from '../../services/MatchService'
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -6,10 +7,10 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import { getStandingTable } from '../../services/MatchService'
+import Skeleton from '@mui/material/Skeleton';
 import '../../styles/standingtable/StandingTable.css'
 
-function StandingsTable({ league }) {
+function StandingsTable({ league, reloadStandings, onReload }) {
     const [standings, setStanding] = useState(null)
 
     function compareStandings(a, b) {
@@ -50,6 +51,13 @@ function StandingsTable({ league }) {
       return sortedTable
     }
 
+    if (reloadStandings) {
+      getStandingTable(league).then((data) => {
+        setStanding(sortTable(data))
+      })
+      onReload()
+    }
+
     useEffect(() => {
       getStandingTable(league).then((data) => {
         setStanding(sortTable(data))
@@ -57,38 +65,42 @@ function StandingsTable({ league }) {
     }, []);
 
     if (standings) {
+      const standingsRowsKeys = ['Team', 'MP', 'W', 'D', 'L', 'GF', 'GA', 'GD', 'PTS']
       let standingsRows = []
+      let standingsHeaders = []
       standings.map((item, index) => {
+        let tableCells = []
+        standingsRowsKeys.map((key) => {
+          tableCells.push(<TableCell align="left">{item[key]}</TableCell>)
+        })
         standingsRows.push(
           <TableRow key={index}>
-            <TableCell align="left">{item['Team']}</TableCell>
-            <TableCell align="right">{item['MP']}</TableCell>
-            <TableCell align="right">{item['W']}</TableCell>
-            <TableCell align="right">{item['D']}</TableCell>
-            <TableCell align="right">{item['L']}</TableCell>
-            <TableCell align="right">{item['GF']}</TableCell>
-            <TableCell align="right">{item['GA']}</TableCell>
-            <TableCell align="right">{item['GD']}</TableCell>
-            <TableCell align="right">{item['PTS']}</TableCell>
-        </TableRow>
+            {tableCells}
+          </TableRow>
         )
       })
+      standingsRowsKeys.map((key) => {
+        if (key !== 'Team') {
+          standingsHeaders.push(
+            <TableCell align="left">{key}</TableCell>
+          )
+        } else {
+          standingsHeaders.push(
+            <TableCell></TableCell>
+          )
+        }
+      })
+
 
       return (
         <div className='standings'>
           <TableContainer component={Paper}>
-                <Table sx={{ minWidth: 650 }} aria-label="simple table">
+                <Table sx={{ overflow: 'auto' }} aria-label="simple table">
                   <TableHead>
                     <TableRow>
-                      <TableCell></TableCell>
-                      <TableCell align="right">MP</TableCell>
-                      <TableCell align="right">W</TableCell>
-                      <TableCell align="right">D</TableCell>
-                      <TableCell align="right">L</TableCell>
-                      <TableCell align="right">GF</TableCell>
-                      <TableCell align="right">GA</TableCell>
-                      <TableCell align="right">GD</TableCell>
-                      <TableCell align="right">PTS</TableCell>
+                      {
+                        standingsHeaders
+                      }
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -100,7 +112,9 @@ function StandingsTable({ league }) {
               </TableContainer>
         </div>
       );
-    } else { return <div>No Data</div> }
+    }
+    
+    return <Skeleton animation="wave" variant="rectangular" height={260} />
   }
 
   export default StandingsTable;
