@@ -8,17 +8,15 @@ from bson import ObjectId
 from os import environ as env
 
 PORT = env.get("APP_PORT", 5001)
-MONGO_PORT = env.get("MONGO_PORT", 5010)
+MONGO_PORT = env.get("MONGO_PORT", 27017)
 MONGO_USERNAME = env.get("MONGO_USERNAME", "admin")
 MONGO_PASSWORD = env.get("MONGO_PASSWORD", "adminpassword")
-MONGO_URL = env.get("MONGO_URL", f"mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@localhost:{MONGO_PORT}")
-
-logging.basicConfig(level=logging.DEBUG,  # Set the minimum level to record (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+MONGO_SERVER = env.get("MONGO_SERVER", "localhost")
+MONGO_URL = env.get("MONGO_URL", f"mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_SERVER}:{MONGO_PORT}")
 
 client = MongoClient(MONGO_URL)
 app = Flask(__name__)
-CORS(app)
+cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 @app.route('/api/league/<league>/match', methods=['POST'])
 def generate_schedule(league):
@@ -45,9 +43,11 @@ def generate_schedule(league):
         str: [{...}]
     }
     """
+    logging.info(f"Connecting to the DB ({league})")
     db = client[league]
     teams = list(db['teams'].find({}))[0]['teams']
 
+    logging.info("Creating schedule")
     matches = RoundRobinScheduler(teams, 2)
     schedule = matches.generate_schedule()
 
@@ -59,8 +59,11 @@ def generate_schedule(league):
                 continue
             result[f"{day}"].append({"day": day, "home": home, "away": away, "scores": {"home": None, "away": None}})
     
+    logging.info("Connecting to collection")
     collection = db['matches']
+    logging.info("Saving document")
     create_doc = collection.insert_one(result)
+    logging.info("Schedule saved successfully")
     
     return jsonify({'message': 'Created successfully', 'id': f"{create_doc.inserted_id}"}), 201
 
@@ -125,13 +128,18 @@ def delete_schedule(league, id):
         id: The id of the document to update
     ...
     """
+    logging.info(f"Connecting to the DB ({league})")
     db = client[league]
+    logging.info("Connecting to collection")
     collection = db['matches']
+    logging.info(f"Deleting document with ID ({id})")
     result = collection.delete_one({"_id": ObjectId(id)})
 
     if result.deleted_count > 0:
+        logging.info("Deleted successfully")
         return jsonify({'message': 'Deleted successfully'}), 200
     else:
+        logging.info("No document deleted")
         return jsonify({'message': 'No documents were deleted'}), 200
 
 @app.route('/api/league/<league>/match', methods=['GET'])
@@ -164,19 +172,37 @@ def get_matches(league):
     }
     """
     try:
+        logging.info(f"Connecting to the DB ({league})")
         db = client[league]
+        if request.args:
+            logging.info(f"Retrieving query params")
+            args = request.args.to_dict()
+            day = args.get("day")
+            logging.info("Connecting to collection")
+            collection = db['matches']
+            logging.info("Getting documents")
+            items = list(collection.find({}))[0]
+            value = items[day]
+            id = str(items["_id"])
+            return_obj = {day: value, "_id": id}
+            logging.info("Document obtained successfully")
+            return jsonify(return_obj), 200
+
+        logging.info("Connecting to collection")
         collection = db['matches']
+        logging.info("Getting documents")
         items = list(collection.find({}))[0]
         items["_id"] = str(items["_id"])
     except Exception as err:
-        print(err)
+        logging.error(err)
         return jsonify({'error': 'Internal Server Error'}), 500
+    logging.info("Document obtained successfully")
     return jsonify(items), 200
 
 @app.route('/api/league/<league>', methods=['GET'])
 def get_league_info(league):
     """
-    Creates a new league on the database with the 'teams' collection
+    Gets a new league on the database in the 'teams' collection
     ...
 
     params
@@ -216,12 +242,11 @@ def delete_league(league, id):
     ...
     """
     db = client[league]
-    collection = db['teams']
-    result = collection.delete_one({"_id": ObjectId(id)})
 
-    if result.deleted_count > 0:
+    try:
+        client.drop_database(league)
         return jsonify({'message': 'Deleted successfully'}), 200
-    else:
+    except Exception:
         return jsonify({'message': 'No documents were deleted'}), 200
 
 @app.route('/api/league/<league>', methods=['POST'])
@@ -240,13 +265,17 @@ def create_league(league):
     ...
     """
     try:
+        logging.info('Creating League')
         data = request.json
+        logging.info('Getting data from body')
         data['name'] = league
         teams = data["teams"]
         db = client[data['name']]
         collection = db['teams']
+        logging.info('Creating teams document')
         collection.insert_one(data)
 
+        logging.info('Creating standings')
         result = {}
         for item in teams:
             result[item] = {
@@ -262,10 +291,12 @@ def create_league(league):
             }
         
         standings = db['standings']
+        logging.info('Creating standing document')
         standings.insert_one(result)
     except Exception as err:
         print(err)
         return jsonify({'error': 'Internal Server Error'}), 500
+    logging.info('League created')
     return jsonify({'message': 'League created successfully'}), 201
 
 @app.route('/api/league/<league>/standings', methods=['GET'])
@@ -319,5 +350,36 @@ def delete_standing(league, id):
     else:
         return jsonify({'message': 'No documents were deleted'}), 200
 
+@app.route('/api/league/all', methods=['GET'])
+def get_league_all():
+    """
+    Get all leagues
+    ...
+
+    params
+    -----
+
+        league: the name of the league
+
+    output
+    -----
+    {
+        desc: string,
+        teams: list
+    }
+    ...
+    """
+    try:
+        db_to_remove = ['admin', 'local', 'config']
+        items = client.list_database_names()
+        for db in db_to_remove:
+            items.remove(db)
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Internal Server Error'}), 500
+    return jsonify(items), 200
+
 if __name__ == '__main__':
-    app.run(debug=True, port=PORT, host='localhost')
+    logging.basicConfig(level=logging.DEBUG,  # Set the minimum level to record (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+    app.run(debug=False, port=PORT, host='0.0.0.0')
